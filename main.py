@@ -170,7 +170,7 @@ schedule.every().monday.at("13:00").do(post_to_discord)
 
 print("✅ Bot is running. Will post every Monday at 6:00 AM MT.")
 print("   To test it RIGHT NOW, uncomment the line below and run the file.")
- post_to_discord()   # ← remove the # at the start of this line to test immediately
+post_to_discord()   # ← remove the # at the start of this line to test immediately
 
 while True:
     schedule.run_pending()
