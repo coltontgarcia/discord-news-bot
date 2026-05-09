@@ -19,16 +19,11 @@ HIGH_PRIORITY_KEYWORDS = [
     "cpi", "consumer price index",
     "pce", "personal consumption",
     "nonfarm", "non-farm", "nfp", "payroll",
-    "gdp",
-    "ppi", "producer price",
-    "retail sales",
-    "unemployment", "jobless claims",
-    "inflation",
-    "jerome powell", "powell speaks",
+    "gdp", "ppi", "producer price",
+    "retail sales", "unemployment", "jobless claims",
+    "inflation", "jerome powell", "powell speaks",
     "ism manufacturing", "ism services",
-    "jolts",
-    "durable goods",
-    "housing starts", "existing home",
+    "jolts", "durable goods", "housing starts", "existing home",
 ]
 
 DAY_EMOJIS = {
@@ -67,15 +62,13 @@ def fetch_week_events():
     from_str = monday.strftime("%Y-%m-%d")
     to_str   = friday.strftime("%Y-%m-%d")
 
-    url = (
-        "https://finnhub.io/api/v1/calendar/economic"
-        f"?from={from_str}&to={to_str}&token={FINNHUB_API_KEY}"
-    )
+    url = f"https://finnhub.io/api/v1/calendar/economic?from={from_str}&to={to_str}&token={FINNHUB_API_KEY}"
 
     try:
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         all_events = resp.json().get("economicCalendar", [])
+        print(f"[INFO] Finnhub returned {len(all_events)} total events")
     except Exception as e:
         print(f"[ERROR] Finnhub fetch failed: {e}")
         return {}
@@ -107,53 +100,44 @@ def fetch_week_events():
     return grouped
 
 
-def build_discord_message(grouped):
-    now_mt   = datetime.now(MOUNTAIN_TZ)
-    monday   = now_mt - timedelta(days=now_mt.weekday())
-    friday   = monday + timedelta(days=4)
-    week_str = f"{monday.strftime('%b %d')} - {friday.strftime('%b %d, %Y')}"
-
-    lines = []
-    has_any = False
-
-    for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
-        events = grouped.get(day, [])
-        emoji  = DAY_EMOJIS[day]
-        lines.append(f"\n{emoji} **{day}**")
-
-        if not events:
-            lines.append("   - No high-impact events")
-        else:
-            has_any = True
-            for e in events:
-                country = f"[{e['country']}] " if e["country"] else ""
-                lines.append(f"   - {country}{e['name']} - {e['time_et']}")
-
-    if not has_any:
-        lines.append("\nNo high-impact events found for this week.")
-
-    description = "\n".join(lines)
-
-    return {
-        "embeds": [
-            {
-                "title": f"📅  High-Impact Economic Events  |  {week_str}",
-                "description": description,
-                "color": 16165683,
-                "footer": {"text": "Source: Finnhub  |  Times in ET  |  Trade safe 🤙"}
-            }
-        ]
-    }
-
-
 def post_to_discord():
     print(f"[{datetime.now(MOUNTAIN_TZ).strftime('%Y-%m-%d %H:%M MT')}] Posting weekly events...")
 
     grouped = fetch_week_events()
-    payload = build_discord_message(grouped)
+
+    now_mt  = datetime.now(MOUNTAIN_TZ)
+    monday  = now_mt - timedelta(days=now_mt.weekday())
+    friday  = monday + timedelta(days=4)
+    week_str = f"{monday.strftime('%b %d')} - {friday.strftime('%b %d, %Y')}"
+
+    lines = [f"📅 **High-Impact Economic Events | {week_str}**\n"]
+
+    has_any = False
+    for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
+        events = grouped.get(day, [])
+        emoji  = DAY_EMOJIS[day]
+        lines.append(f"{emoji} **{day}**")
+
+        if not events:
+            lines.append("   — No high-impact events")
+        else:
+            has_any = True
+            for e in events:
+                country = f"[{e['country']}] " if e["country"] else ""
+                lines.append(f"   • {country}{e['name']} — {e['time_et']}")
+
+        lines.append("")
+
+    if not has_any:
+        lines.append("No high-impact events found for this week.")
+
+    lines.append("_Source: Finnhub | Times in ET | Trade safe 🤙_")
+
+    message = "\n".join(lines)
+    print(f"[INFO] Sending message:\n{message}")
 
     try:
-        resp = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
+        resp = requests.post(DISCORD_WEBHOOK_URL, json={"content": message}, timeout=10)
         if resp.status_code in (200, 204):
             print("[OK] Posted to Discord successfully.")
         else:
