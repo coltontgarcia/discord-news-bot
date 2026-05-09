@@ -54,7 +54,7 @@ def convert_to_et(time_str, date_str):
         dt_utc = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
         dt_utc = pytz.utc.localize(dt_utc)
         dt_et  = dt_utc.astimezone(EASTERN_TZ)
-        return dt_et.strftime("%-I:%M %p ET")
+        return dt_et.strftime("%I:%M %p ET").lstrip("0")
     except Exception:
         return time_str
 
@@ -68,7 +68,7 @@ def fetch_week_events():
     to_str   = friday.strftime("%Y-%m-%d")
 
     url = (
-        f"https://finnhub.io/api/v1/calendar/economic"
+        "https://finnhub.io/api/v1/calendar/economic"
         f"?from={from_str}&to={to_str}&token={FINNHUB_API_KEY}"
     )
 
@@ -108,10 +108,10 @@ def fetch_week_events():
 
 
 def build_discord_message(grouped):
-    now_mt  = datetime.now(MOUNTAIN_TZ)
-    monday  = now_mt - timedelta(days=now_mt.weekday())
-    friday  = monday + timedelta(days=4)
-    week_str = f"{monday.strftime('%b %d')} – {friday.strftime('%b %d, %Y')}"
+    now_mt   = datetime.now(MOUNTAIN_TZ)
+    monday   = now_mt - timedelta(days=now_mt.weekday())
+    friday   = monday + timedelta(days=4)
+    week_str = f"{monday.strftime('%b %d')} - {friday.strftime('%b %d, %Y')}"
 
     lines = []
     has_any = False
@@ -122,26 +122,25 @@ def build_discord_message(grouped):
         lines.append(f"\n{emoji} **{day}**")
 
         if not events:
-            lines.append("　　— No high-impact events")
+            lines.append("   - No high-impact events")
         else:
             has_any = True
             for e in events:
                 country = f"[{e['country']}] " if e["country"] else ""
-                lines.append(f"　　• {country}{e['name']} — `{e['time_et']}`")
+                lines.append(f"   - {country}{e['name']} - {e['time_et']}")
 
     if not has_any:
-        lines.append("\n*No high-impact events found for this week.*")
+        lines.append("\nNo high-impact events found for this week.")
 
     description = "\n".join(lines)
 
     return {
         "embeds": [
             {
-                "title":       f"📅  High-Impact Economic Events  |  {week_str}",
+                "title": f"📅  High-Impact Economic Events  |  {week_str}",
                 "description": description,
-                "color":       0xF4A733,
-                "footer":      {"text": "Source: Finnhub  •  Times in ET  •  Trade safe 🤙"},
-                "timestamp":   datetime.utcnow().isoformat() + "Z",
+                "color": 16165683,
+                "footer": {"text": "Source: Finnhub  |  Times in ET  |  Trade safe 🤙"}
             }
         ]
     }
@@ -169,8 +168,8 @@ def post_to_discord():
 schedule.every().monday.at("13:00").do(post_to_discord)
 
 print("✅ Bot is running. Will post every Monday at 6:00 AM MT.")
-print("   To test it RIGHT NOW, uncomment the line below and run the file.")
-post_to_discord()   # ← remove the # at the start of this line to test immediately
+print("   To test RIGHT NOW, uncomment the line below and redeploy.")
+post_to_discord()   # <-- remove the # to test immediately
 
 while True:
     schedule.run_pending()
