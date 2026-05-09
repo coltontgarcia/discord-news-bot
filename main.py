@@ -37,7 +37,9 @@ def convert_to_et(time_str, date_str):
 
 def fetch_week_events():
     now_mt  = datetime.now(MOUNTAIN_TZ)
-    monday  = now_mt - timedelta(days=now_mt.weekday())
+    # Since we post Sunday, calculate the upcoming Monday–Friday
+    days_until_monday = (7 - now_mt.weekday()) % 7 or 7
+    monday  = now_mt + timedelta(days=days_until_monday)
     friday  = monday + timedelta(days=4)
 
     from_str = monday.strftime("%Y-%m-%d")
@@ -57,11 +59,8 @@ def fetch_week_events():
     grouped = {day: [] for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
 
     for event in all_events:
-        # US only
         if event.get("country", "").upper() != "US":
             continue
-
-        # High impact only — this is the red folder filter
         if event.get("impact", "").lower() != "high":
             continue
 
@@ -82,17 +81,13 @@ def fetch_week_events():
             "time_et": convert_to_et(time_str, date_str),
         })
 
-    return grouped
+    return grouped, monday, friday
 
 
 def post_to_discord():
     print(f"[{datetime.now(MOUNTAIN_TZ).strftime('%Y-%m-%d %H:%M MT')}] Posting weekly events...")
 
-    grouped = fetch_week_events()
-
-    now_mt   = datetime.now(MOUNTAIN_TZ)
-    monday   = now_mt - timedelta(days=now_mt.weekday())
-    friday   = monday + timedelta(days=4)
+    grouped, monday, friday = fetch_week_events()
     week_str = f"{monday.strftime('%b %d')} - {friday.strftime('%b %d, %Y')}"
 
     lines = [f"🔴 **High-Impact US News Events | {week_str}**\n"]
@@ -131,13 +126,13 @@ def post_to_discord():
 
 
 # ══════════════════════════════════════════════════
-#   SCHEDULE — Every Monday at 6:00 AM MT (13:00 UTC)
+#   SCHEDULE — Every Sunday at 6:00 PM MT (01:00 UTC Monday)
 # ══════════════════════════════════════════════════
-schedule.every().monday.at("13:00").do(post_to_discord)
+schedule.every().sunday.at("01:00").do(post_to_discord)
 
-print("✅ Bot is running. Will post every Monday at 6:00 AM MT.")
+print("✅ Bot is running. Will post every Sunday at 6:00 PM MT.")
 print("   To test RIGHT NOW, uncomment the line below and redeploy.")
-post_to_discord()   # <-- remove the # to test immediately
+# post_to_discord()   # <-- remove the # to test immediately
 
 while True:
     schedule.run_pending()
