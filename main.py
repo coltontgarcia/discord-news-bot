@@ -76,6 +76,10 @@ def fetch_week_events():
     grouped = {day: [] for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
 
     for event in all_events:
+        # US only
+        if event.get("country", "").upper() != "US":
+            continue
+
         if not is_high_impact(event):
             continue
 
@@ -93,7 +97,6 @@ def fetch_week_events():
 
         grouped[day_name].append({
             "name":    event.get("event", "Unknown Event"),
-            "country": event.get("country", "").upper(),
             "time_et": convert_to_et(time_str, date_str),
         })
 
@@ -105,12 +108,12 @@ def post_to_discord():
 
     grouped = fetch_week_events()
 
-    now_mt  = datetime.now(MOUNTAIN_TZ)
-    monday  = now_mt - timedelta(days=now_mt.weekday())
-    friday  = monday + timedelta(days=4)
+    now_mt   = datetime.now(MOUNTAIN_TZ)
+    monday   = now_mt - timedelta(days=now_mt.weekday())
+    friday   = monday + timedelta(days=4)
     week_str = f"{monday.strftime('%b %d')} - {friday.strftime('%b %d, %Y')}"
 
-    lines = [f"📅 **High-Impact Economic Events | {week_str}**\n"]
+    lines = [f"📅 **High-Impact US Economic Events | {week_str}**\n"]
 
     has_any = False
     for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
@@ -123,13 +126,12 @@ def post_to_discord():
         else:
             has_any = True
             for e in events:
-                country = f"[{e['country']}] " if e["country"] else ""
-                lines.append(f"   • {country}{e['name']} — {e['time_et']}")
+                lines.append(f"   • {e['name']} — {e['time_et']}")
 
         lines.append("")
 
     if not has_any:
-        lines.append("No high-impact events found for this week.")
+        lines.append("No high-impact US events found for this week.")
 
     lines.append("_Source: Finnhub | Times in ET | Trade safe 🤙_")
 
