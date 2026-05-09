@@ -14,18 +14,6 @@ FINNHUB_API_KEY     = "d7vfof9r01qldb7frch0d7vfof9r01qldb7frchg"
 MOUNTAIN_TZ = pytz.timezone("America/Denver")
 EASTERN_TZ  = pytz.timezone("America/New_York")
 
-HIGH_PRIORITY_KEYWORDS = [
-    "fomc", "federal reserve", "fed rate", "interest rate decision",
-    "cpi", "consumer price index",
-    "pce", "personal consumption",
-    "nonfarm", "non-farm", "nfp", "payroll",
-    "gdp", "ppi", "producer price",
-    "retail sales", "unemployment", "jobless claims",
-    "inflation", "jerome powell", "powell speaks",
-    "ism manufacturing", "ism services",
-    "jolts", "durable goods", "housing starts", "existing home",
-]
-
 DAY_EMOJIS = {
     "Monday":    "1️⃣",
     "Tuesday":   "2️⃣",
@@ -33,13 +21,6 @@ DAY_EMOJIS = {
     "Thursday":  "4️⃣",
     "Friday":    "5️⃣",
 }
-
-
-def is_high_impact(event):
-    if event.get("impact", "").lower() == "high":
-        return True
-    name = event.get("event", "").lower()
-    return any(kw in name for kw in HIGH_PRIORITY_KEYWORDS)
 
 
 def convert_to_et(time_str, date_str):
@@ -80,7 +61,8 @@ def fetch_week_events():
         if event.get("country", "").upper() != "US":
             continue
 
-        if not is_high_impact(event):
+        # High impact only — this is the red folder filter
+        if event.get("impact", "").lower() != "high":
             continue
 
         date_str = event.get("time", "")[:10]
@@ -113,7 +95,7 @@ def post_to_discord():
     friday   = monday + timedelta(days=4)
     week_str = f"{monday.strftime('%b %d')} - {friday.strftime('%b %d, %Y')}"
 
-    lines = [f"📅 **High-Impact US Economic Events | {week_str}**\n"]
+    lines = [f"🔴 **High-Impact US News Events | {week_str}**\n"]
 
     has_any = False
     for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
@@ -122,7 +104,7 @@ def post_to_discord():
         lines.append(f"{emoji} **{day}**")
 
         if not events:
-            lines.append("   — No high-impact events")
+            lines.append("   — Nothing major")
         else:
             has_any = True
             for e in events:
@@ -131,7 +113,7 @@ def post_to_discord():
         lines.append("")
 
     if not has_any:
-        lines.append("No high-impact US events found for this week.")
+        lines.append("No high-impact events this week.")
 
     lines.append("_Source: Finnhub | Times in ET | Trade safe 🤙_")
 
